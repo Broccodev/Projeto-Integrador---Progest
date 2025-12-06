@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Lotes — Propriedades Rurais{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Registrar Lotes por Propriedade</h1>
+  <form class="form" method="post">
+    <div class="form-row">
+      <label for="propriedade_id">Propriedade</label>
+      <select id="propriedade_id" name="propriedade_id" required>
+        <option value="">Selecione...</option>
+        {% for p in propriedades %}
+          <option value="{{ p['id'] }}">{{ p['nome'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="animal_id">Tipo de Animal</label>
+      <select id="animal_id" name="animal_id" required>
+        <option value="">Selecione...</option>
+        {% for a in animais %}
+          <option value="{{ a['id'] }}">{{ a['descricao'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="quantidade">Quantidade de animais</label>
+      <input type="number" step="1" min="1" id="quantidade" name="quantidade" required />
+    </div>
+    <div class="form-row">
+      <label for="data_registro">Data do registro</label>
+      <input type="date" id="data_registro" name="data_registro" />
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="button">Salvar Lote</button>
+      <button type="reset" class="button secondary">Limpar</button>
+    </div>
+  </form>
+</section>
+
+
+{% endblock %}

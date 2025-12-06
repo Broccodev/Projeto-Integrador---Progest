@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Propriedades Rurais{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/styles.css') }}" />
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="brand">
+        <a class="link-progest-future" href="{{ url_for('index') }}">
+    <i class="fas fa-bars"></i>
+    <span class="pro-text">Pro</span><span class="gest-text">Gest</span>
+</a>
+        </div>
+        
+        {% if show_menu %}
+          {% if session.get('user') %}
+            <div class="greeting">Olá {{ session.get('user') }}</div>
+          {% endif %}
+          
+          <ul class="menu">
+            <!-- Dropdown Cadastro -->
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle">
+                📋 Cadastro
+                <span class="dropdown-arrow">▼</span>
+              </a>
+              <ul class="dropdown-menu">
+                <li><a href="{{ url_for('owners') }}">👤 Proprietários</a></li>
+                <li><a href="{{ url_for('propriedades') }}">🏞️ Propriedades</a></li>
+                <li><a href="{{ url_for('animais') }}">🐄 Animais</a></li>
+                <li><a href="{{ url_for('lotes') }}">🌱 Lotes</a></li>
+              </ul>
+            </li>
+            
+            <!-- Logoff -->
+            <li class="logout-item">
+              <a href="{{ url_for('logout') }}" class="logout-btn">
+                <span class="logout-icon">🚪</span>
+                <span class="logout-text">Sair</span>
+              </a>
+            </li>
+          </ul>
+        {% endif %}
+      </div>
+    </nav>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <section class="card">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </section>
+        {% endif %}
+      {% endwith %}
+      
+      {% block content %}{% endblock %}
+    </main>
+
+    <script>
+      // Oculta mensagens flash após 3 segundos
+      setTimeout(function() {
+        document.querySelectorAll('.flash').forEach(function(el) {
+          el.style.display = 'none';
+        });
+      }, 3000);
+
+      // Fechar dropdown ao clicar fora
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown')) {
+          document.querySelectorAll('.dropdown-menu').forEach(function(menu) {
+            menu.style.opacity = '0';
+            menu.style.visibility = 'hidden';
+          });
+        }
+      });
+
+      // Mobile: toggle dropdown
+      document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+          if (window.innerWidth <= 768) {
+            e.preventDefault();
+            const menu = this.nextElementSibling;
+            const isVisible = menu.style.visibility === 'visible';
+            
+            document.querySelectorAll('.dropdown-menu').forEach(function(m) {
+              m.style.opacity = '0';
+              m.style.visibility = 'hidden';
+            });
+            
+            if (!isVisible) {
+              menu.style.opacity = '1';
+              menu.style.visibility = 'visible';
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

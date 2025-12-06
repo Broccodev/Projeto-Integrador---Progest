@@ -1,0 +1,752 @@
+{% extends 'base.html' %}
+{% block title %}BI — ProGest Rural{% endblock %}
+
+{% block content %}
+<!-- Título do painel -->
+<h2 class="card-title text-center mb-6 text-2xl font-bold text-gray-800">📊 Dashboard de Indicadores</h2>
+
+
+<!-- Filtros de período MODERNIZADO -->
+<div class="mb-8 p-5 bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-lg font-bold text-gray-800 mb-1">🔍 Filtrar por Período</h3>
+            <p class="text-sm text-gray-600">Selecione o intervalo de tempo para análise</p>
+        </div>
+        
+        <div class="flex flex-wrap gap-2">
+            <button onclick="filtrarPeriodo('7d')" class="periodo-btn px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-all duration-200 flex items-center gap-2 group">
+                <span class="text-lg">📅</span>
+                <span>7 dias</span>
+            </button>
+            <button onclick="filtrarPeriodo('30d')" class="periodo-btn active px-4 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 group">
+                <span class="text-lg">📊</span>
+                <span>30 dias</span>
+            </button>
+            <button onclick="filtrarPeriodo('90d')" class="periodo-btn px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-all duration-200 flex items-center gap-2 group">
+                <span class="text-lg">📈</span>
+                <span>90 dias</span>
+            </button>
+            <button onclick="filtrarPeriodo('all')" class="periodo-btn px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-all duration-200 flex items-center gap-2 group">
+                <span class="text-lg">🏆</span>
+                <span>Todos</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Grid dos gráficos - SEMPRE 2 POR LINHA -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5" id="dashboardGrid">
+
+  <!-- Linha 1, Coluna 1 -->
+  <div class="card p-4" style="min-height: 350px;">
+    <h3 class="mb-3 text-lg font-semibold text-gray-800 text-center">🐄 Proprietários com mais animais</h3>
+    <div id="graficoProprietarios" 
+         role="img" 
+         aria-label="Gráfico de proprietários com mais animais"
+         style="height: 300px;">
+      <div class="flex items-center justify-center h-full">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+        <span class="ml-2 text-sm text-gray-600">Carregando...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 1, Coluna 2 -->
+  <div class="card p-4" style="min-height: 350px;">
+    <h3 class="mb-3 text-lg font-semibold text-gray-800 text-center">📏 Proprietários com maior área (ha)</h3>
+    <div id="graficoArea" 
+         role="img" 
+         aria-label="Gráfico de proprietários com maior área"
+         style="height: 300px;">
+      <div class="flex items-center justify-center h-full">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+        <span class="ml-2 text-sm text-gray-600">Carregando...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 2, Coluna 1 -->
+  <div class="card p-4" style="min-height: 350px;">
+    <h3 class="mb-3 text-lg font-semibold text-gray-800 text-center">🗺️ Estados com mais fazendas cadastradas</h3>
+    <div id="graficoEstados" 
+         role="img" 
+         aria-label="Gráfico de estados com mais fazendas"
+         style="height: 300px;">
+      <div class="flex items-center justify-center h-full">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+        <span class="ml-2 text-sm text-gray-600">Carregando...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linha 2, Coluna 2 -->
+  <div class="card p-4" style="min-height: 350px;">
+    <h3 class="mb-3 text-lg font-semibold text-gray-800 text-center">🐂 Raças com mais animais</h3>
+    <div id="graficoRacas" 
+         role="img" 
+         aria-label="Gráfico de raças com mais animais"
+         style="height: 300px;">
+      <div class="flex items-center justify-center h-full">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+        <span class="ml-2 text-sm text-gray-600">Carregando...</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ECharts CDN -->
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+<script>
+// Variável global para armazenar os gráficos
+let charts = {};
+let periodoAtual = '30d'; // Período padrão
+
+// Função para mostrar mensagem de dados vazios
+function mostrarMensagemVazio(elementId, mensagem = 'Nenhum dado disponível') {
+    const element = document.getElementById(elementId);
+    element.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-gray-400">
+            <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm">${mensagem}</p>
+        </div>
+    `;
+}
+
+// Função para limpar e formatar strings
+function formatarString(str) {
+    if (!str) return 'N/A';
+    
+    try {
+        str = str.toString().trim();
+        
+        // Se a string for muito longa, truncar
+        if (str.length > 20) {
+            return str.substring(0, 20) + '...';
+        }
+        
+        return str;
+    } catch (e) {
+        return 'Dado inválido';
+    }
+}
+
+// Função para criar gráfico de barras com layout otimizado
+function criarGraficoBar(id, categorias, valores, cor = '#22c55e', unidade = '') {
+    if (!categorias || !valores || categorias.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados disponíveis");
+        return null;
+    }
+
+    // Verificar se valores são numéricos
+    const valoresNumericos = valores.map(v => {
+        const num = Number(v);
+        return isNaN(num) ? 0 : num;
+    });
+    
+    // Formatar categorias
+    const categoriasFormatadas = categorias.map(c => formatarString(c));
+    
+    // Verificar se há dados válidos
+    const somaValores = valoresNumericos.reduce((a, b) => a + b, 0);
+    if (somaValores === 0) {
+        mostrarMensagemVazio(id, "Dados numéricos não disponíveis");
+        return null;
+    }
+
+    const chart = echarts.init(document.getElementById(id));
+    chart.setOption({
+        tooltip: { 
+            trigger: 'axis',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: [8, 12],
+            textStyle: {
+                color: '#2d3748',
+                fontSize: 12
+            },
+            formatter: function(params) {
+                const valorOriginal = params[0].data;
+                const categoriaOriginal = categorias[params[0].dataIndex];
+                return `<div class="font-semibold mb-1">${categoriaOriginal}</div>
+                       <div class="text-gray-600">Total: <span class="font-bold">${valorOriginal}${unidade ? ' ' + unidade : ''}</span></div>`;
+            }
+        },
+        xAxis: { 
+            type: 'category', 
+            data: categoriasFormatadas,
+            axisLabel: { 
+                rotate: 25,
+                fontSize: 11,
+                interval: 0,
+                margin: 10,
+                color: '#4a5568',
+                formatter: function(value) {
+                    return value.length > 18 ? value.substring(0, 18) + '...' : value;
+                }
+            },
+            axisTick: {
+                alignWithLabel: true,
+                length: 0
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#e2e8f0'
+                }
+            }
+        },
+        yAxis: { 
+            type: 'value',
+            name: unidade ? unidade : 'Qtd',
+            nameLocation: 'end',
+            nameTextStyle: {
+                fontSize: 10,
+                color: '#718096',
+                padding: [0, 0, 2, 0]
+            },
+            axisLine: {
+                show: false
+            },
+            axisTick: {
+                show: false
+            },
+            splitLine: {
+                lineStyle: {
+                    color: '#edf2f7',
+                    type: 'dashed'
+                }
+            },
+            axisLabel: {
+                fontSize: 10,
+                color: '#718096'
+            }
+        },
+        series: [{
+            name: 'Total',
+            data: valoresNumericos,
+            type: 'bar',
+            itemStyle: { 
+                color: cor,
+                borderRadius: [4, 4, 0, 0],
+                shadowColor: 'rgba(0, 0, 0, 0.05)',
+                shadowBlur: 3,
+                shadowOffsetY: 2
+            },
+            label: { 
+                show: true, 
+                position: 'top',
+                formatter: '{c}' + (unidade ? unidade : ''),
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#2d3748'
+            },
+            barWidth: '65%',
+            barGap: '25%',
+            emphasis: {
+                itemStyle: {
+                    shadowColor: 'rgba(0, 0, 0, 0.15)',
+                    shadowBlur: 6,
+                    shadowOffsetY: 3
+                }
+            }
+        }],
+        grid: { 
+            left: '5%', 
+            right: '5%',
+            bottom: '18%',
+            top: '10%',
+            containLabel: true
+        }
+    });
+    
+    charts[id] = chart;
+    return chart;
+}
+
+// Função para criar gráfico de pizza otimizado
+function criarGraficoPizza(id, nomes, valores) {
+    if (!nomes || !valores || nomes.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados disponíveis");
+        return null;
+    }
+
+    // Verificar se valores são numéricos
+    const valoresNumericos = valores.map(v => {
+        const num = Number(v);
+        return isNaN(num) ? 0 : num;
+    });
+    
+    // Filtrar apenas dados com valores positivos
+    const dadosFiltrados = nomes.map((nome, i) => ({
+        nome: formatarString(nome),
+        valor: valoresNumericos[i]
+    })).filter(item => item.valor > 0);
+    
+    if (dadosFiltrados.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados válidos para exibir");
+        return null;
+    }
+
+    const chart = echarts.init(document.getElementById(id));
+    
+    // Paleta de cores moderna
+    const cores = [
+        '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
+        '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#14b8a6',
+        '#64748b', '#a855f7', '#10b981', '#f43f5e', '#6366f1'
+    ];
+
+    chart.setOption({
+        tooltip: { 
+            trigger: 'item',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: [8, 12],
+            textStyle: {
+                fontSize: 12,
+                color: '#2d3748'
+            },
+            formatter: '<b>{b}</b><br/>Quantidade: {c}<br/>Percentual: ({d}%)'
+        },
+        legend: { 
+            type: 'scroll',
+            orient: 'horizontal',
+            bottom: '5%',
+            left: 'center',
+            itemWidth: 10,
+            itemHeight: 10,
+            itemGap: 10,
+            textStyle: {
+                fontSize: 11,
+                color: '#4a5568'
+            },
+            pageTextStyle: {
+                fontSize: 10
+            },
+            pageIconColor: '#10b981',
+            pageIconInactiveColor: '#cbd5e1'
+        },
+        series: [{
+            type: 'pie',
+            radius: ['35%', '70%'],
+            center: ['50%', '48%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderRadius: 5,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                shadowColor: 'rgba(0, 0, 0, 0.08)',
+                shadowBlur: 4,
+                shadowOffsetX: 1,
+                shadowOffsetY: 2
+            },
+            label: {
+                show: true,
+                position: 'outside',
+                formatter: function(params) {
+                    return params.name.length > 15 ? params.name.substring(0, 15) + '...' : params.name;
+                },
+                fontSize: 11,
+                color: '#2d3748',
+                fontWeight: '500'
+            },
+            emphasis: {
+                scale: true,
+                scaleSize: 10,
+                label: {
+                    show: true,
+                    fontSize: 12,
+                    fontWeight: 'bold'
+                }
+            },
+            labelLine: {
+                show: true,
+                length: 15,
+                length2: 10,
+                smooth: false,
+                lineStyle: {
+                    width: 1,
+                    color: '#e2e8f0'
+                }
+            },
+            data: dadosFiltrados.map((item, index) => ({
+                value: item.valor,
+                name: item.nome,
+                itemStyle: {
+                    color: cores[index % cores.length]
+                }
+            }))
+        }]
+    });
+    
+    charts[id] = chart;
+    return chart;
+}
+
+// Função para filtrar por período
+function filtrarPeriodo(periodo) {
+    periodoAtual = periodo;
+    
+    // Atualizar estilo dos botões
+    document.querySelectorAll('.periodo-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-gradient-to-r', 'from-green-500', 'to-emerald-500', 'text-white', 'shadow-md');
+        btn.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+    });
+    
+    // Destacar botão ativo
+    const botaoAtivo = document.querySelector(`button[onclick="filtrarPeriodo('${periodo}')"]`);
+    if (botaoAtivo) {
+        botaoAtivo.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+        botaoAtivo.classList.add('active', 'bg-gradient-to-r', 'from-green-500', 'to-emerald-500', 'text-white', 'shadow-md');
+    }
+    
+    // Recarregar dados
+    carregarDadosDashboard();
+}
+
+// Função para carregar dados
+function carregarDadosDashboard() {
+    // Mostrar loading em todos os gráficos
+    const chartIds = ['graficoProprietarios', 'graficoArea', 'graficoEstados', 'graficoRacas'];
+    chartIds.forEach(id => {
+        const element = document.getElementById(id);
+        element.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mb-2"></div>
+                <span class="text-xs text-gray-500">Carregando dados...</span>
+            </div>
+        `;
+    });
+
+    // Fetch único para todos os dados do BI
+    fetch(`/api/bi/dashboard?periodo=${periodoAtual}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Erro na resposta da API');
+            return res.json();
+        })
+        .then(data => {
+            console.log('Dados recebidos:', data);
+            
+            // Limpar gráficos existentes
+            Object.values(charts).forEach(chart => {
+                if (chart && !chart.isDisposed()) {
+                    chart.dispose();
+                }
+            });
+            charts = {};
+
+            // 1️⃣ Proprietários com mais animais
+            if (data.animais_por_proprietario && data.animais_por_proprietario.length > 0) {
+                const proprietarios = data.animais_por_proprietario.map(d => d.proprietario || 'Sem nome');
+                const totais = data.animais_por_proprietario.map(d => d.total_animais || 0);
+                
+                // Ordenar por quantidade (maior para menor) e limitar a 12
+                const indicesOrdenados = Array.from(totais.keys())
+                    .sort((a, b) => totais[b] - totais[a])
+                    .slice(0, 12);
+                
+                const proprietariosOrdenados = indicesOrdenados.map(i => proprietarios[i]);
+                const totaisOrdenados = indicesOrdenados.map(i => totais[i]);
+                
+                criarGraficoBar(
+                    "graficoProprietarios",
+                    proprietariosOrdenados,
+                    totaisOrdenados,
+                    '#10b981',
+                    ''
+                );
+            } else {
+                mostrarMensagemVazio("graficoProprietarios", "Sem dados");
+            }
+
+            // 2️⃣ Proprietários com maior área
+            if (data.area_por_proprietario && data.area_por_proprietario.length > 0) {
+                const proprietarios = data.area_por_proprietario.map(d => d.proprietario || 'Sem nome');
+                const areas = data.area_por_proprietario.map(d => d.total_ha || 0);
+                
+                // Ordenar por área (maior para menor) e limitar a 12
+                const indicesOrdenados = Array.from(areas.keys())
+                    .sort((a, b) => areas[b] - areas[a])
+                    .slice(0, 12);
+                
+                const proprietariosOrdenados = indicesOrdenados.map(i => proprietarios[i]);
+                const areasOrdenadas = indicesOrdenados.map(i => areas[i]);
+                
+                criarGraficoBar(
+                    "graficoArea",
+                    proprietariosOrdenados,
+                    areasOrdenadas,
+                    '#3b82f6',
+                    'ha'
+                );
+            } else {
+                mostrarMensagemVazio("graficoArea", "Sem dados");
+            }
+
+            // 3️⃣ Estados com mais fazendas
+            if (data.fazendas_por_estado && data.fazendas_por_estado.length > 0) {
+                const estados = data.fazendas_por_estado.map(d => d.estado || 'Sem estado');
+                const contagens = data.fazendas_por_estado.map(d => d.total_fazendas || 0);
+                
+                criarGraficoPizza(
+                    "graficoEstados",
+                    estados,
+                    contagens
+                );
+            } else {
+                mostrarMensagemVazio("graficoEstados", "Sem dados");
+            }
+
+            // 4️⃣ Raças com mais animais
+            if (data.animais_por_raca && data.animais_por_raca.length > 0) {
+                const racas = data.animais_por_raca.map(d => d.raca || 'Sem raça');
+                const totais = data.animais_por_raca.map(d => d.total || 0);
+                
+                // Ordenar por quantidade (maior para menor) e limitar a 15
+                const indicesOrdenados = Array.from(totais.keys())
+                    .sort((a, b) => totais[b] - totais[a])
+                    .slice(0, 15);
+                
+                const racasOrdenadas = indicesOrdenados.map(i => racas[i]);
+                const totaisOrdenados = indicesOrdenados.map(i => totais[i]);
+                
+                criarGraficoBar(
+                    "graficoRacas",
+                    racasOrdenadas,
+                    totaisOrdenados,
+                    '#f59e0b',
+                    ''
+                );
+            } else {
+                mostrarMensagemVazio("graficoRacas", "Sem dados");
+            }
+        })
+        .catch(err => {
+            console.error("Erro ao carregar dados do BI:", err);
+            
+            chartIds.forEach(id => {
+                mostrarMensagemVazio(id, "Erro ao carregar dados");
+            });
+        });
+}
+
+// Redimensionar gráficos
+window.addEventListener('resize', function() {
+    Object.values(charts).forEach(chart => {
+        if (chart && !chart.isDisposed()) {
+            chart.resize();
+        }
+    });
+});
+
+// Carregar dados ao iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    filtrarPeriodo('30d');
+});
+</script>
+
+<!-- Estilos adicionais -->
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.card h3 {
+    color: #1e293b;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f8fafc;
+}
+
+.periodo-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.periodo-btn:hover:not(.active) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.periodo-btn.active {
+    box-shadow: 0 6px 10px -1px rgba(16, 185, 129, 0.2);
+}
+
+/* Animações modernas */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: slideIn 0.4s ease-out forwards;
+    opacity: 0;
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
+
+/* Layout responsivo - AGORA SEMPRE 2 POR LINHA EM DESKTOP */
+@media (min-width: 1024px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .card {
+        min-height: 370px !important;
+    }
+    
+    #graficoProprietarios,
+    #graficoArea,
+    #graficoEstados,
+    #graficoRacas {
+        height: 320px !important;
+    }
+}
+
+/* Para tablets (768px - 1023px) - 2 por linha também */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .card {
+        min-height: 340px !important;
+    }
+    
+    #graficoProprietarios,
+    #graficoArea,
+    #graficoEstados,
+    #graficoRacas {
+        height: 290px !important;
+    }
+}
+
+/* Para mobile (até 767px) - 1 por linha */
+@media (max-width: 767px) {
+    .grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+    
+    .card {
+        min-height: 320px !important;
+        padding: 1rem !important;
+    }
+    
+    #graficoProprietarios,
+    #graficoArea,
+    #graficoEstados,
+    #graficoRacas {
+        height: 270px !important;
+    }
+    
+    .card h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .periodo-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .periodo-btn span:first-child {
+        font-size: 0.875rem;
+    }
+}
+
+/* Para telas muito grandes */
+@media (min-width: 1536px) {
+    .grid {
+        gap: 1.5rem;
+    }
+    
+    .card {
+        min-height: 380px !important;
+    }
+    
+    #graficoProprietarios,
+    #graficoArea,
+    #graficoEstados,
+    #graficoRacas {
+        height: 330px !important;
+    }
+}
+
+/* Melhorias no scroll */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Efeito de loading nos botões */
+.periodo-btn:active {
+    transform: scale(0.98);
+}
+
+/* Sombras sutis nos cards */
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, #10b981, #3b82f6, #f59e0b, #8b5cf6);
+    border-radius: 12px 12px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+    opacity: 1;
+}
+
+/* Layout mais compacto para telas médias */
+@media (min-width: 768px) {
+    .card h3 {
+        font-size: 1.1rem;
+    }
+}
+</style>
+{% endblock %}

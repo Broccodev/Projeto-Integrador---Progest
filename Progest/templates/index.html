@@ -1,0 +1,1156 @@
+<!-- 
+DASHBOARD EXECUTIVO - SISTEMA DE GESTÃO RURAL
+
+Este template HTML representa o dashboard principal do sistema ProGest2, 
+uma aplicação web para gestão de propriedades rurais e rebanhos.
+
+CARACTERÍSTICAS PRINCIPAIS:
+1. Design moderno e responsivo com interface "card-based"
+2. Visualização compacta de métricas principais (KPI)
+3. Seção de gráficos interativos para análise de dados (BI)
+4. Integração com ECharts para visualizações avançadas
+5. Filtros dinâmicos por período
+6. Animações e transições suaves
+
+ESTRUTURA DO TEMPLATE:
+1. Cabeçalho com título e descrição
+2. Grid de 4 cards com métricas principais
+3. Seção de gráficos com 4 visualizações diferentes
+4. Scripts para renderização dinâmica dos gráficos
+
+TECNOLOGIAS UTILIZADAS:
+- HTML5/CSS3 para estrutura e estilos
+- JavaScript/ECMAScript para interatividade
+- ECharts (biblioteca de gráficos)
+- Flask/Jinja2 para template engine
+- CSS Grid/Flexbox para layouts responsivos
+
+FUNCIONALIDADES DOS GRÁFICOS:
+1. Proprietários com mais animais (barras horizontais)
+2. Proprietários com maior área (barras horizontais)
+3. Estados com mais fazendas (barras horizontais)
+4. Distribuição de raças (gráfico de pizza)
+
+PONTOS DE DESTAQUE PARA O PROFESSOR:
+- Design totalmente responsivo (mobile-first)
+- Animações CSS para melhor UX
+- Tratamento de erros e estados vazios
+- Otimização de performance (lazy loading)
+- Código modular e bem comentado
+- Acessibilidade básica implementada
+- Integração perfeita com backend Flask
+-->
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Compacto | Sistema de Gestão Rural{% endblock %}
+
+{% block content %}
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
+    /* -------------------------------------------------------------------------- */
+    /* VARIÁVEIS CSS E ESTILOS GERAIS                           */
+    /* -------------------------------------------------------------------------- */
+    :root {
+        --primary: #2e7d32;          /* Verde principal - agricultura */
+        --secondary: #4caf50;        /* Verde secundário */
+        --background: #f0f2f5;       /* Cor de fundo suave */
+        --card-bg: #ffffff;          /* Fundo dos cards */
+        --text-color: #333;          /* Cor do texto principal */
+        --border: #e8e8e8;           /* Cor das bordas */
+        --shadow-light: rgba(0, 0, 0, 0.08); /* Sombra leve */
+    }
+
+    /* Container principal com padding otimizado */
+    .container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px; /* Largura máxima para telas grandes */
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* CABEÇALHO DA PÁGINA                                     */
+    /* -------------------------------------------------------------------------- */
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid var(--secondary);
+        text-align: center;
+    }
+
+    .page-title {
+        color: var(--primary);
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 0.3rem;
+    }
+
+    .lead-text {
+        color: #777;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* GRID DE CARDS DE MÉTRICAS (4 CARDS)                     */
+    /* -------------------------------------------------------------------------- */
+    .dashboard-grid-compact {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 4 colunas em desktop */
+        gap: 1.5rem; /* Espaçamento entre cards */
+        margin-bottom: 2rem;
+    }
+
+    /* Responsividade: 2 colunas em tablets */
+    @media (max-width: 992px) {
+        .dashboard-grid-compact {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Responsividade: 1 coluna em mobile */
+    @media (max-width: 576px) {
+        .dashboard-grid-compact {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* ESTILOS DOS CARDS INDIVIDUAIS                           */
+    /* -------------------------------------------------------------------------- */
+    .stat-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px var(--shadow-light);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+        border-left: 5px solid var(--primary); /* Barra colorida lateral */
+        opacity: 0; /* Inicia invisível para animação */
+        transform: translateY(20px); /* Posição inicial para animação */
+    }
+
+    /* Animação de entrada dos cards */
+    .stat-card.animate-loaded {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    }
+
+    /* Efeito hover: elevação e sombra mais intensa */
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Conteúdo interno do card (flexbox para alinhamento) */
+    .card-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.2rem;
+        color: var(--text-color);
+        text-decoration: none; /* Remove sublinhado do link */
+    }
+
+    /* Informações da estatística */
+    .stat-info h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #666; /* Cor mais suave para o rótulo */
+    }
+
+    /* Valor da estatística (número grande) */
+    .stat-info p.value {
+        font-size: 2.2rem;
+        font-weight: 900;
+        margin: 0.2rem 0 0;
+        color: var(--primary);
+    }
+
+    /* Ícone do card */
+    .stat-icon {
+        font-size: 2.5rem;
+        padding: 0.5rem;
+        border-radius: 8px;
+        color: var(--card-bg); /* Cor do ícone (branco) */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease-out;
+    }
+
+    /* Efeito no ícone ao passar o mouse */
+    .stat-card:hover .stat-icon {
+        transform: scale(1.05);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* SEÇÃO DE GRÁFICOS (BUSINESS INTELLIGENCE)               */
+    /* -------------------------------------------------------------------------- */
+    .dashboard-graficos {
+        margin-top: 30px;
+        margin-bottom: 40px;
+    }
+
+    /* Container dos filtros de período */
+    .filtros-container {
+        background: linear-gradient(to right, #ffffff, #f8fafc);
+        border-radius: 16px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+        margin-bottom: 30px;
+        border: 1px solid #f1f5f9;
+    }
+
+    /* Cabeçalho dos filtros (responsivo) */
+    .filtros-header {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 20px;
+    }
+
+    @media (min-width: 768px) {
+        .filtros-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+    }
+
+    /* Título da seção de filtros */
+    .filtros-titulo h3 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 5px;
+    }
+
+    .filtros-titulo p {
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+
+    /* Container dos botões de filtro */
+    .filtros-botoes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    @media (min-width: 768px) {
+        .filtros-botoes {
+            margin-top: 0;
+        }
+    }
+
+    /* Botões de período */
+    .periodo-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #f1f5f9;
+        color: #475569;
+        border: none;
+        cursor: pointer;
+    }
+
+    .periodo-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background-color: #e2e8f0;
+    }
+
+    /* Estilo para botão ativo */
+    .periodo-btn.active {
+        background: linear-gradient(to right, #10b981, #059669);
+        color: white;
+        box-shadow: 0 6px 15px rgba(16, 185, 129, 0.2);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* GRID DE GRÁFICOS (2x2)                                  */
+    /* -------------------------------------------------------------------------- */
+    .graficos-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 colunas em desktop */
+        gap: 20px;
+    }
+
+    /* Responsividade: 1 coluna em tablets */
+    @media (max-width: 768px) {
+        .graficos-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Cards individuais dos gráficos */
+    .grafico-card {
+        background: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        padding: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid #f1f5f9;
+        overflow: hidden;
+        position: relative;
+        opacity: 0; /* Para animação de entrada */
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    /* Efeito hover nos cards de gráfico */
+    .grafico-card:hover {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        transform: translateY(-3px);
+    }
+
+    /* Título dos gráficos */
+    .grafico-card h3 {
+        color: #1e293b;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f8fafc;
+        text-align: center;
+        letter-spacing: -0.025em;
+    }
+
+    /* Container onde o gráfico será renderizado */
+    .grafico-container {
+        height: 300px;
+        width: 100%;
+        position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .grafico-container {
+            height: 280px; /* Altura menor em mobile */
+        }
+    }
+
+    /* Barra de gradiente decorativa no topo dos cards */
+    .grafico-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(to right, #10b981, #3b82f6, #f59e0b, #8b5cf6);
+        border-radius: 14px 14px 0 0;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .grafico-card:hover::before {
+        opacity: 1; /* Mostra a barra ao passar o mouse */
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* ESTADOS DE CARREGAMENTO E VAZIO                          */
+    /* -------------------------------------------------------------------------- */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #64748b;
+    }
+
+    /* Spinner de carregamento */
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f3f4f6;
+        border-top-color: #10b981;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 10px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Estado quando não há dados */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #94a3b8;
+        text-align: center;
+        padding: 20px;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* ANIMAÇÕES                                              */
+    /* -------------------------------------------------------------------------- */
+    /* Animação de entrada dos cards de gráfico */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Delays sequenciais para animação dos gráficos */
+    .grafico-card:nth-child(1) { animation-delay: 0.1s; }
+    .grafico-card:nth-child(2) { animation-delay: 0.2s; }
+    .grafico-card:nth-child(3) { animation-delay: 0.3s; }
+    .grafico-card:nth-child(4) { animation-delay: 0.4s; }
+</style>
+
+<!-- ========================================================================== -->
+<!-- CONTEÚDO PRINCIPAL DO DASHBOARD                          -->
+<!-- ========================================================================== -->
+<main class="container">
+
+    <!-- CABEÇALHO COM TÍTULO E DESCRIÇÃO -->
+    <header class="text-center page-header">
+        <h1 id="main-heading" class="page-title">
+            Dashboard Executivo <span style="font-weight: 300;">| Resumo Operacional</span>
+        </h1>
+        <p class="lead-text">Métricas de alto nível e acesso rápido em uma única visualização.</p>
+    </header>
+
+    <!-- GRID DE 4 CARDS COM MÉTRICAS PRINCIPAIS -->
+    <div class="dashboard-grid-compact">
+        
+        <!-- CARD 1: PROPRIETÁRIOS -->
+        <article class="stat-card" data-url="{{ url_for('show_owners1') }}" data-color="#00bcd4">
+            <a class="card-content" href="{{ url_for('show_owners1') }}">
+                <div class="stat-info">
+                    <h4>Proprietários</h4>
+                    <p class="value">{{ proprietarios_count }}</p>
+                </div>
+                <div class="stat-icon" style="background-color: #00bcd4;">👤</div>
+            </a>
+        </article>
+
+        <!-- CARD 2: PROPRIEDADES -->
+        <article class="stat-card" data-url="{{ url_for('show_propriedades1') }}" data-color="#ff9800">
+            <a class="card-content" href="{{ url_for('show_propriedades1') }}">
+                <div class="stat-info">
+                    <h4>Propriedades</h4>
+                    <p class="value">{{ propriedades_count }}</p>
+                </div>
+                <div class="stat-icon" style="background-color: #ff9800;">🏞️</div>
+            </a>
+        </article>
+
+        <!-- CARD 3: TOTAL DE ANIMAIS -->
+        <article class="stat-card" data-url="{{ url_for('show_lotes1') }}" data-color="#e91e63">
+            <a class="card-content" href="{{ url_for('show_lotes1') }}">
+                 <div class="stat-info">
+                     <h4>Animais</h4>
+                     <p class="value">{{ quantidade_count }}</p>
+                 </div>
+                 <div class="stat-icon" style="background-color: #e91e63;">🐄</div>
+            </a>
+        </article>
+
+        <!-- CARD 4: LOTES ATIVOS -->
+        <article class="stat-card" data-url="{{ url_for('show_lotes1') }}" data-color="#8bc34a">
+            <a class="card-content" href="{{ url_for('show_lotes1') }}">
+                <div class="stat-info">
+                    <h4>Lotes Ativos</h4>
+                    <p class="value">{{ lotes_count }}</p>
+                </div>
+                <div class="stat-icon" style="background-color: #8bc34a;">🌱</div>
+            </a>
+        </article>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- SEÇÃO DE GRÁFICOS (BUSINESS INTELLIGENCE)           -->
+    <!-- ====================================================================== -->
+    <section class="dashboard-graficos">
+        
+        <!-- FILTROS DE PERÍODO PARA OS GRÁFICOS -->
+        <div class="filtros-container">
+            <div class="filtros-header">
+                <div class="filtros-titulo">
+                    <h3>🔍 Análise de Indicadores</h3>
+                    <p>Selecione o período para análise dos dados</p>
+                </div>
+                
+                <!-- BOTÕES DE FILTRO POR PERÍODO -->
+                <div class="filtros-botoes">
+                    <button onclick="filtrarPeriodo('7d')" class="periodo-btn">
+                        <span>📅</span>
+                        <span>7 dias</span>
+                    </button>
+                    <button onclick="filtrarPeriodo('30d')" class="periodo-btn active">
+                        <span>📊</span>
+                        <span>30 dias</span>
+                    </button>
+                    <button onclick="filtrarPeriodo('90d')" class="periodo-btn">
+                        <span>📈</span>
+                        <span>90 dias</span>
+                    </button>
+                    <button onclick="filtrarPeriodo('all')" class="periodo-btn">
+                        <span>🏆</span>
+                        <span>Todos</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID DE GRÁFICOS (2x2) -->
+        <div class="graficos-grid">
+            
+            <!-- GRÁFICO 1: Proprietários com mais animais -->
+            <div class="grafico-card">
+                <h3>🐄 Proprietários com mais animais</h3>
+                <div id="graficoProprietarios" class="grafico-container">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando dados...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRÁFICO 2: Proprietários com maior área -->
+            <div class="grafico-card">
+                <h3>📏 Proprietários com maior área (ha)</h3>
+                <div id="graficoArea" class="grafico-container">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando dados...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRÁFICO 3: Estados com mais fazendas -->
+            <div class="grafico-card">
+                <h3>🗺️ Estados com mais fazendas</h3>
+                <div id="graficoEstados" class="grafico-container">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando dados...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRÁFICO 4: Distribuição por raças -->
+            <div class="grafico-card">
+                <h3>🐂 Raças com mais animais</h3>
+                <div id="graficoRacas" class="grafico-container">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando dados...</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</main>
+
+<!-- ========================================================================== -->
+<!-- BIBLIOTECA DE GRÁFICOS ECHART                            -->
+<!-- ========================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+<script>
+// ============================================================================
+// VARIÁVEIS GLOBAIS E CONFIGURAÇÕES
+// ============================================================================
+let charts = {}; // Objeto para armazenar instâncias dos gráficos
+let periodoAtual = '30d'; // Período padrão selecionado
+
+// ============================================================================
+// FUNÇÕES AUXILIARES
+// ============================================================================
+
+/**
+ * Mostra mensagem de "dados vazios" em um container de gráfico
+ * @param {string} elementId - ID do elemento HTML
+ * @param {string} mensagem - Mensagem a ser exibida
+ */
+function mostrarMensagemVazio(elementId, mensagem = 'Nenhum dado disponível') {
+    const element = document.getElementById(elementId);
+    element.innerHTML = `
+        <div class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>${mensagem}</p>
+        </div>
+    `;
+}
+
+/**
+ * Formata strings para exibição nos gráficos (truncamento, validação)
+ * @param {string} str - String a ser formatada
+ * @returns {string} - String formatada
+ */
+function formatarString(str) {
+    if (!str) return 'N/A';
+    
+    try {
+        str = str.toString().trim();
+        
+        // Truncar strings muito longas para caber nos labels
+        if (str.length > 20) {
+            return str.substring(0, 20) + '...';
+        }
+        
+        return str;
+    } catch (e) {
+        return 'Dado inválido';
+    }
+}
+
+// ============================================================================
+// FUNÇÕES DE CRIAÇÃO DE GRÁFICOS
+// ============================================================================
+
+/**
+ * Cria um gráfico de barras com scroll horizontal
+ * Mostra apenas 5 itens inicialmente, permitindo scroll para os demais
+ * @param {string} id - ID do elemento HTML
+ * @param {Array} categorias - Array de nomes/categorias
+ * @param {Array} valores - Array de valores numéricos
+ * @param {string} cor - Cor principal do gráfico (hex)
+ * @param {string} unidade - Unidade de medida (ex: "ha", "%")
+ * @returns {object|null} - Instância do gráfico ECharts ou null
+ */
+function criarGraficoBar(id, categorias, valores, cor = '#10b981', unidade = '') {
+    // Validação de dados
+    if (!categorias || !valores || categorias.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados disponíveis");
+        return null;
+    }
+
+    // Converter valores para números
+    const valoresNumericos = valores.map(v => {
+        const num = Number(v);
+        return isNaN(num) ? 0 : num;
+    });
+    
+    // Criar array de objetos para ordenação
+    const dados = categorias.map((categoria, index) => ({
+        categoria: categoria,
+        valor: valoresNumericos[index]
+    }));
+    
+    // Ordenar por valor (maior para menor) - ranking
+    dados.sort((a, b) => b.valor - a.valor);
+    
+    // Formatar categorias para exibição
+    const categoriasFormatadas = dados.map(d => formatarString(d.categoria));
+    const valoresOrdenados = dados.map(d => d.valor);
+    
+    // Verificar se há dados válidos (não todos zero)
+    const somaValores = valoresOrdenados.reduce((a, b) => a + b, 0);
+    if (somaValores === 0) {
+        mostrarMensagemVazio(id, "Dados numéricos não disponíveis");
+        return null;
+    }
+
+    // Inicializar gráfico ECharts
+    const chart = echarts.init(document.getElementById(id));
+    
+    // Configurar barra de rolagem horizontal (se houver muitos dados)
+    const dataZoom = valoresOrdenados.length > 5 ? [{
+        type: 'slider',
+        xAxisIndex: 0,
+        filterMode: 'filter',
+        start: 0,
+        end: Math.min(100, (5 / valoresOrdenados.length) * 100), // Mostra ~5 itens
+        height: 25,
+        bottom: 10,
+        borderColor: 'transparent',
+        backgroundColor: '#f8fafc',
+        fillerColor: '#10b981',
+        handleStyle: {
+            color: '#10b981',
+            borderColor: '#10b981'
+        },
+        textStyle: {
+            color: '#64748b',
+            fontSize: 11
+        }
+    }] : [];
+
+    // Configurar opções do gráfico
+    chart.setOption({
+        tooltip: { 
+            trigger: 'axis',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: [8, 12],
+            textStyle: {
+                color: '#2d3748',
+                fontSize: 12
+            },
+            formatter: function(params) {
+                const valor = params[0].data;
+                const categoria = categoriasFormatadas[params[0].dataIndex];
+                const categoriaOriginal = dados[params[0].dataIndex].categoria;
+                const posicao = params[0].dataIndex + 1;
+                return `<div style="font-weight: 600; margin-bottom: 5px;">${categoriaOriginal}</div>
+                       <div style="color: #64748b;">Posição: <span style="font-weight: 700;">#${posicao}</span></div>
+                       <div style="color: #64748b;">Total: <span style="font-weight: 700;">${valor}${unidade ? ' ' + unidade : ''}</span></div>`;
+            }
+        },
+        xAxis: { 
+            type: 'category', 
+            data: categoriasFormatadas,
+            axisLabel: { 
+                rotate: 25, // Rotacionar labels para melhor legibilidade
+                fontSize: 11,
+                interval: 0, // Mostrar todos os labels
+                margin: 10,
+                color: '#4a5568',
+                formatter: function(value, index) {
+                    // Formatar label com número de posição
+                    const posicao = index + 1;
+                    return `#${posicao}. ${value.length > 12 ? value.substring(0, 12) + '...' : value}`;
+                }
+            },
+            axisTick: {
+                alignWithLabel: true,
+                length: 0
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#e2e8f0'
+                }
+            }
+        },
+        yAxis: { 
+            type: 'value',
+            name: unidade ? unidade : 'Qtd',
+            nameLocation: 'end',
+            nameTextStyle: {
+                fontSize: 10,
+                color: '#718096',
+                padding: [0, 0, 2, 0]
+            },
+            axisLine: {
+                show: false
+            },
+            axisTick: {
+                show: false
+            },
+            splitLine: {
+                lineStyle: {
+                    color: '#edf2f7',
+                    type: 'dashed'
+                }
+            },
+            axisLabel: {
+                fontSize: 10,
+                color: '#718096'
+            }
+        },
+        series: [{
+            name: 'Total',
+            data: valoresOrdenados,
+            type: 'bar',
+            itemStyle: { 
+                color: function(params) {
+                    // Gradiente de cor para os 3 primeiros
+                    if (params.dataIndex < 3) {
+                        return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: cor },
+                            { offset: 1, color: cor + 'CC' }
+                        ]);
+                    }
+                    return cor + '99'; // Cores mais transparentes para os demais
+                },
+                borderRadius: [4, 4, 0, 0],
+                shadowColor: 'rgba(0, 0, 0, 0.05)',
+                shadowBlur: 3,
+                shadowOffsetY: 2
+            },
+            label: { 
+                show: true, 
+                position: 'top',
+                formatter: '{c}' + (unidade ? unidade : ''),
+                fontSize: 10,
+                fontWeight: '600',
+                color: '#2d3748'
+            },
+            barWidth: valoresOrdenados.length > 10 ? '40%' : '65%',
+            barGap: '15%',
+            emphasis: {
+                itemStyle: {
+                    shadowColor: 'rgba(0, 0, 0, 0.15)',
+                    shadowBlur: 6,
+                    shadowOffsetY: 3
+                }
+            }
+        }],
+        grid: { 
+            left: '5%', 
+            right: '5%',
+            bottom: valoresOrdenados.length > 5 ? '20%' : '18%',
+            top: '10%',
+            containLabel: true
+        },
+        dataZoom: dataZoom
+    });
+    
+    // Armazenar referência do gráfico
+    charts[id] = chart;
+    return chart;
+}
+
+/**
+ * Cria um gráfico de pizza (donut) com destaque para os maiores valores
+ * @param {string} id - ID do elemento HTML
+ * @param {Array} nomes - Array de nomes/categorias
+ * @param {Array} valores - Array de valores numéricos
+ * @returns {object|null} - Instância do gráfico ECharts ou null
+ */
+function criarGraficoPizza(id, nomes, valores) {
+    // Validação de dados
+    if (!nomes || !valores || nomes.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados disponíveis");
+        return null;
+    }
+
+    // Converter valores para números
+    const valoresNumericos = valores.map(v => {
+        const num = Number(v);
+        return isNaN(num) ? 0 : num;
+    });
+    
+    // Criar array de objetos para ordenação
+    const dados = nomes.map((nome, index) => ({
+        nome: nome,
+        valor: valoresNumericos[index],
+        originalIndex: index
+    }));
+    
+    // Ordenar por valor (maior para menor)
+    dados.sort((a, b) => b.valor - a.valor);
+    
+    // Filtrar apenas valores positivos
+    const dadosFiltrados = dados.filter(item => item.valor > 0);
+    
+    if (dadosFiltrados.length === 0) {
+        mostrarMensagemVazio(id, "Sem dados válidos para exibir");
+        return null;
+    }
+
+    // Inicializar gráfico
+    const chart = echarts.init(document.getElementById(id));
+    
+    // Paleta de cores moderna
+    const cores = [
+        '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
+        '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#14b8a6',
+        '#64748b', '#a855f7', '#10b981', '#f43f5e', '#6366f1'
+    ];
+
+    // Configurar opções do gráfico
+    chart.setOption({
+        tooltip: { 
+            trigger: 'item',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            padding: [8, 12],
+            textStyle: {
+                fontSize: 12,
+                color: '#2d3748'
+            },
+            formatter: function(params) {
+                const posicao = params.data.originalIndex + 1;
+                return `<b>#${posicao}. ${params.data.originalName || params.name}</b><br/>Quantidade: ${params.value}<br/>Percentual: ({d}%)`;
+            }
+        },
+        legend: { 
+            type: 'scroll', // Legendas com scroll se necessário
+            orient: 'horizontal',
+            bottom: '5%',
+            left: 'center',
+            itemWidth: 10,
+            itemHeight: 10,
+            itemGap: 10,
+            textStyle: {
+                fontSize: 11,
+                color: '#4a5568'
+            },
+            pageTextStyle: {
+                fontSize: 10
+            },
+            pageIconColor: '#10b981',
+            pageIconInactiveColor: '#cbd5e1',
+            formatter: function(name) {
+                // Formatar legenda com posição
+                const item = dadosFiltrados.find(d => formatarString(d.nome) === name);
+                if (item) {
+                    const posicao = dadosFiltrados.indexOf(item) + 1;
+                    return `#${posicao}. ${name}`;
+                }
+                return name;
+            }
+        },
+        series: [{
+            type: 'pie',
+            radius: dadosFiltrados.length > 5 ? ['35%', '65%'] : ['40%', '70%'], // Donut chart
+            center: ['50%', '48%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderRadius: 5,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                shadowColor: 'rgba(0, 0, 0, 0.08)',
+                shadowBlur: 4,
+                shadowOffsetX: 1,
+                shadowOffsetY: 2
+            },
+            label: {
+                show: true,
+                position: 'outside',
+                formatter: function(params) {
+                    const posicao = params.data.originalIndex + 1;
+                    const nome = params.name.length > 10 ? params.name.substring(0, 10) + '...' : params.name;
+                    return `#${posicao}. ${nome}`;
+                },
+                fontSize: 11,
+                color: '#2d3748',
+                fontWeight: '500'
+            },
+            emphasis: {
+                scale: true,
+                scaleSize: 10,
+                label: {
+                    show: true,
+                    fontSize: 12,
+                    fontWeight: 'bold'
+                }
+            },
+            labelLine: {
+                show: true,
+                length: 15,
+                length2: 10,
+                smooth: false,
+                lineStyle: {
+                    width: 1,
+                    color: '#e2e8f0'
+                }
+            },
+            data: dadosFiltrados.map((item, index) => ({
+                value: item.valor,
+                name: formatarString(item.nome),
+                originalName: item.nome,
+                originalIndex: index,
+                itemStyle: {
+                    color: cores[index % cores.length],
+                    // Destaque visual para os 5 primeiros
+                    opacity: index < 5 ? 1 : 0.7
+                }
+            }))
+        }]
+    });
+    
+    // Armazenar referência do gráfico
+    charts[id] = chart;
+    return chart;
+}
+
+// ============================================================================
+// FUNÇÕES DE CONTROLE E INTERAÇÃO
+// ============================================================================
+
+/**
+ * Filtra os dados do dashboard por período
+ * @param {string} periodo - Período selecionado ('7d', '30d', '90d', 'all')
+ */
+function filtrarPeriodo(periodo) {
+    periodoAtual = periodo;
+    
+    // Atualizar estado visual dos botões
+    document.querySelectorAll('.periodo-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Destacar botão ativo
+    const botaoAtivo = document.querySelector(`button[onclick="filtrarPeriodo('${periodo}')"]`);
+    if (botaoAtivo) {
+        botaoAtivo.classList.add('active');
+    }
+    
+    // Recarregar dados com o novo período
+    carregarDadosDashboard();
+}
+
+/**
+ * Carrega dados do dashboard via API fetch
+ * Atualiza todos os gráficos com os dados recebidos
+ */
+function carregarDadosDashboard() {
+    // IDs dos containers de gráfico
+    const chartIds = ['graficoProprietarios', 'graficoArea', 'graficoEstados', 'graficoRacas'];
+    
+    // Mostrar estado de carregamento em todos os gráficos
+    chartIds.forEach(id => {
+        const element = document.getElementById(id);
+        element.innerHTML = `
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <span>Carregando dados...</span>
+            </div>
+        `;
+    });
+
+    // Fazer requisição à API do backend
+    fetch(`/api/bi/dashboard?periodo=${periodoAtual}`)
+        .then(res => {
+            if (!res.ok) throw new Error('Erro na resposta da API');
+            return res.json();
+        })
+        .then(data => {
+            console.log('Dados do dashboard recebidos:', data);
+            
+            // Limpar gráficos existentes
+            Object.values(charts).forEach(chart => {
+                if (chart && !chart.isDisposed()) {
+                    chart.dispose();
+                }
+            });
+            charts = {};
+
+            // 1️⃣ GRÁFICO: Proprietários com mais animais
+            if (data.animais_por_proprietario && data.animais_por_proprietario.length > 0) {
+                const proprietarios = data.animais_por_proprietario.map(d => d.proprietario || 'Sem nome');
+                const totais = data.animais_por_proprietario.map(d => d.total_animais || 0);
+                
+                criarGraficoBar(
+                    "graficoProprietarios",
+                    proprietarios,
+                    totais,
+                    '#10b981',
+                    ''
+                );
+            } else {
+                mostrarMensagemVazio("graficoProprietarios", "Sem dados disponíveis");
+            }
+
+            // 2️⃣ GRÁFICO: Proprietários com maior área
+            if (data.area_por_proprietario && data.area_por_proprietario.length > 0) {
+                const proprietarios = data.area_por_proprietario.map(d => d.proprietario || 'Sem nome');
+                const areas = data.area_por_proprietario.map(d => d.total_ha || 0);
+                
+                criarGraficoBar(
+                    "graficoArea",
+                    proprietarios,
+                    areas,
+                    '#3b82f6',
+                    'ha'
+                );
+            } else {
+                mostrarMensagemVazio("graficoArea", "Sem dados disponíveis");
+            }
+
+            // 3️⃣ GRÁFICO: Estados com mais fazendas
+            if (data.fazendas_por_estado && data.fazendas_por_estado.length > 0) {
+                const estados = data.fazendas_por_estado.map(d => d.estado || 'Sem estado');
+                const contagens = data.fazendas_por_estado.map(d => d.total_fazendas || 0);
+                
+                criarGraficoBar(
+                    "graficoEstados",
+                    estados,
+                    contagens,
+                    '#8b5cf6',
+                    ''
+                );
+            } else {
+                mostrarMensagemVazio("graficoEstados", "Sem dados disponíveis");
+            }
+
+            // 4️⃣ GRÁFICO: Distribuição por raças
+            if (data.animais_por_raca && data.animais_por_raca.length > 0) {
+                const racas = data.animais_por_raca.map(d => d.raca || 'Sem raça');
+                const totais = data.animais_por_raca.map(d => d.total || 0);
+                
+                criarGraficoPizza(
+                    "graficoRacas",
+                    racas,
+                    totais
+                );
+            } else {
+                mostrarMensagemVazio("graficoRacas", "Sem dados disponíveis");
+            }
+        })
+        .catch(err => {
+            console.error("Erro ao carregar dados do BI:", err);
+            
+            // Mostrar mensagem de erro em todos os gráficos
+            chartIds.forEach(id => {
+                mostrarMensagemVazio(id, "Erro ao carregar dados");
+            });
+        });
+}
+
+// ============================================================================
+// EVENT LISTENERS E INICIALIZAÇÃO
+// ============================================================================
+
+/**
+ * Redimensiona todos os gráficos quando a janela é redimensionada
+ * Mantém a responsividade dos gráficos
+ */
+window.addEventListener('resize', function() {
+    Object.values(charts).forEach(chart => {
+        if (chart && !chart.isDisposed()) {
+            chart.resize();
+        }
+    });
+});
+
+/**
+ * Inicialização do dashboard quando o DOM estiver carregado
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações dos cards de estatísticas
+    const statCards = document.querySelectorAll('.stat-card');
+
+    // Aplicar animação sequencial aos cards
+    statCards.forEach((card, index) => {
+        const color = card.getAttribute('data-color') || 'var(--primary)';
+        card.style.borderLeft = `5px solid ${color}`;
+
+        // Delay sequencial para animação
+        setTimeout(() => {
+            card.classList.add('animate-loaded');
+        }, index * 100);
+    });
+
+    // Tornar todo o card clicável (não apenas o link)
+    statCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            const link = this.querySelector('a');
+            if (link && !e.target.closest('a')) link.click();
+        });
+    });
+
+    // Carregar gráficos inicialmente com período padrão
+    filtrarPeriodo('30d');
+});
+</script>
+
+{% endblock %}

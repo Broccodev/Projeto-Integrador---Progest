@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Criar conta — Propriedades Rurais{% endblock %}
+{% block content %}
+<style>
+  /* Fundo azul claro apenas nesta página */
+  body { background-color: #ADD8E6; }
+  /* Section com fundo azul claro e texto preto */
+  section.card { background-color: #ADD8E6; color: #000; }
+  section.card h1,
+  section.card label,
+  section.card p,
+  section.card a { color: #000; }
+  /* Inputs e botão na mesma cor do fundo */
+  section.card input[type="text"],
+  section.card input[type="password"] {
+    background-color: #ADD8E6;
+    color: #000;
+    border: 1px solid #4f96c7; /* leve contraste para visibilidade */
+    box-shadow: none;
+  }
+  section.card input::placeholder { color: #000; opacity: 0.6; }
+  section.card .button {
+    background-color: #ADD8E6;
+    color: #000;
+    border: 1px solid #4f96c7;
+  }
+  section.card .button:hover { filter: brightness(0.97); }
+</style>
+<section class="card">
+  <h1>Criar conta</h1>
+  <form class="form" method="post">
+    <div class="form-row">
+      <label for="username">Usuário</label>
+      <input type="text" id="username" name="username" required />
+    </div>
+    <div class="form-row">
+      <label for="password">Senha</label>
+      <input type="password" id="password" name="password" required />
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button">Criar conta</button>
+    </div>
+  </form>
+  <p style="margin-top:16px;">
+    Já tem conta? <a href="{{ url_for('login') }}">Fazer login</a>
+  </p>
+</section>
+{% endblock %}

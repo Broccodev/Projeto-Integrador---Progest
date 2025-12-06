@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% block title %}Lotes — Propriedades Rurais{% endblock %}
+
+{% block content %}
+
+<style>
+
+/* ---------------------------------------------------------------------------- */
+/* ESTILO AGRO PREMIUM — mesmo tema das outras páginas                         */
+/* ---------------------------------------------------------------------------- */
+
+:root {
+    --primary-green: #388e3c;
+    --secondary-green: #4caf50;
+    --card-bg: #ffffff;
+    --light-gray: #f9f9f9;
+    --hover-bg: #f5f5f5;
+    --header-bg: #e8f5e9;
+    --border-color: #e0e0e0;
+    --text-color: #000000;
+    --shadow-light: rgba(0, 0, 0, 0.08);
+}
+
+/* CARD PADRÃO */
+.card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 40px;
+    width: 100%;
+    box-shadow: 0 4px 15px var(--shadow-light);
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+/* título estilo premium */
+.card h2 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--primary-green);
+    border-bottom: 2px solid var(--primary-green);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Estilo para os filtros */
+.filter-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-input {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+.filter-input::placeholder {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.filter-container {
+    position: relative;
+}
+
+.clear-filter {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.filter-container:hover .clear-filter,
+.filter-input:focus + .clear-filter,
+.clear-filter.show {
+    opacity: 1;
+}
+
+.clear-filter:hover {
+    color: #666;
+}
+
+/* contador de resultados */
+.result-count {
+    display: block;
+    text-align: right;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 600;
+}
+
+.result-count span {
+    color: var(--primary-green);
+    font-weight: 700;
+}
+
+/* tabela premium */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.98rem;
+    font-family: 'Montserrat', sans-serif !important;
+    color: var(--text-color);
+}
+
+.table thead th {
+    background-color: var(--header-bg);
+    padding: 14px 12px;
+    font-weight: 700;
+    color: var(--primary-green);
+    border-bottom: 2px solid var(--primary-green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    vertical-align: top;
+}
+
+.table tbody td {
+    padding: 13px 12px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: 0.2s ease;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: var(--light-gray);
+}
+
+.table tbody tr:hover {
+    background-color: var(--hover-bg);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px var(--shadow-light);
+}
+
+/* linha de "nenhum cadastro" */
+.table tbody td[colspan] {
+    padding: 25px;
+    text-align: center;
+    font-style: italic;
+    color: #777;
+    background-color: var(--light-gray);
+}
+
+/* animação suave */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* mensagem quando nenhum resultado é encontrado após filtro */
+.no-results {
+    text-align: center;
+    padding: 30px !important;
+    font-style: italic;
+    color: #666;
+    background-color: var(--light-gray);
+    display: none;
+}
+
+</style>
+
+<section class="card">
+  <h2>🌱 Lotes Cadastrados</h2>
+
+  <span id="resultCount" class="result-count">
+    Mostrando <span id="visibleCount">{{ lotes|length }}</span> de {{ lotes|length }} lotes
+  </span>
+
+  <div class="table-responsive">
+    <table class="table" id="lotesTable">
+      <thead>
+        <tr>
+          <th>
+            <div class="filter-header">
+              <span>🏠 Propriedade</span>
+              <div class="filter-container">
+                <input type="text" class="filter-input" data-column="0" placeholder="Filtrar propriedade..." title="Filtrar por propriedade">
+                <button class="clear-filter" onclick="clearFilter(0)">×</button>
+              </div>
+            </div>
+          </th>
+          <th>
+            <div class="filter-header">
+              <span>🐄 Animal</span>
+              <div class="filter-container">
+                <input type="text" class="filter-input" data-column="1" placeholder="Filtrar animal..." title="Filtrar por animal">
+                <button class="clear-filter" onclick="clearFilter(1)">×</button>
+              </div>
+            </div>
+          </th>
+          <th>
+            <div class="filter-header">
+              <span>🔢 Quantidade</span>
+              <div class="filter-container">
+                <input type="text" class="filter-input" data-column="2" placeholder="Filtrar quantidade..." title="Filtrar por quantidade">
+                <button class="clear-filter" onclick="clearFilter(2)">×</button>
+              </div>
+            </div>
+          </th>
+          <th>
+            <div class="filter-header">
+              <span>📅 Data de Registro</span>
+              <div class="filter-container">
+                <input type="text" class="filter-input" data-column="3" placeholder="Filtrar data..." title="Filtrar por data">
+                <button class="clear-filter" onclick="clearFilter(3)">×</button>
+              </div>
+            </div>
+          </th>
+        </tr>
+      </thead>
+
+      <tbody id="tableBody">
+        {% for r in lotes %}
+        <tr class="data-row">
+          <td>{{ r.propriedade.nome }}</td>
+          <td>{{ r.animal.tipo }}</td>
+          <td>{{ r.quantidade }}</td>
+          <td>{{ r.data_registro.strftime('%d/%m/%Y') if r.data_registro else '-' }}</td>
+        </tr>
+        {% else %}
+        <tr id="noDataRow">
+          <td colspan="4">Nenhum lote cadastrado.</td>
+        </tr>
+        {% endfor %}
+        <!-- Linha para quando nenhum resultado for encontrado após filtro -->
+        <tr id="noResultsRow" style="display: none;">
+          <td colspan="4" class="no-results">
+            Nenhum lote encontrado com os filtros aplicados.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('lotesTable');
+    const filters = document.querySelectorAll('.filter-input');
+    const tableBody = document.getElementById('tableBody');
+    const visibleCount = document.getElementById('visibleCount');
+    const totalCount = {{ lotes|length }};
+    const noResultsRow = document.getElementById('noResultsRow');
+    const noDataRow = document.getElementById('noDataRow');
+    let allRows = Array.from(document.querySelectorAll('.data-row'));
+    
+    // Mostra/oculta botão de limpar filtro baseado no conteúdo
+    filters.forEach(filter => {
+        filter.addEventListener('input', function() {
+            const clearBtn = this.nextElementSibling;
+            if (this.value.trim() !== '') {
+                clearBtn.classList.add('show');
+            } else {
+                clearBtn.classList.remove('show');
+            }
+        });
+    });
+    
+    // Função para filtrar a tabela
+    function filterTable() {
+        let visible = 0;
+        let anyFilterActive = false;
+        
+        // Verifica se há filtros ativos
+        filters.forEach(filter => {
+            if (filter.value.trim() !== '') {
+                anyFilterActive = true;
+            }
+        });
+        
+        // Se não há dados, não faz nada
+        if (totalCount === 0) {
+            if (noDataRow) noDataRow.style.display = '';
+            if (noResultsRow) noResultsRow.style.display = 'none';
+            visibleCount.textContent = '0';
+            return;
+        }
+        
+        allRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            let showRow = true;
+            
+            filters.forEach(filter => {
+                const columnIndex = parseInt(filter.getAttribute('data-column'));
+                const filterValue = filter.value.toLowerCase().trim();
+                
+                if (filterValue !== '') {
+                    const cellValue = cells[columnIndex]?.textContent.toLowerCase().trim() || '';
+                    if (!cellValue.includes(filterValue)) {
+                        showRow = false;
+                    }
+                }
+            });
+            
+            if (showRow) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Mostra/oculta mensagens
+        if (visible === 0 && anyFilterActive) {
+            // Se há filtros ativos mas nenhum resultado
+            if (noResultsRow) noResultsRow.style.display = '';
+            allRows.forEach(row => row.style.display = 'none');
+        } else {
+            // Caso contrário, esconde a mensagem de nenhum resultado
+            if (noResultsRow) noResultsRow.style.display = 'none';
+            if (noDataRow && totalCount > 0) noDataRow.style.display = 'none';
+        }
+        
+        // Atualiza contador
+        visibleCount.textContent = visible;
+        
+        // Se todos os filtros estiverem vazios, mostra contagem total
+        if (!anyFilterActive) {
+            visibleCount.textContent = totalCount;
+        }
+    }
+    
+    // Adiciona evento de input para cada filtro
+    filters.forEach(filter => {
+        filter.addEventListener('input', filterTable);
+        
+        // Adiciona evento de tecla para limpar com Esc
+        filter.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                filterTable();
+                this.focus();
+                this.nextElementSibling.classList.remove('show');
+            }
+        });
+    });
+    
+    // Inicializa a tabela
+    console.log('Tabela de lotes carregada com filtros ativos');
+});
+
+// Função para limpar filtro de uma coluna específica
+function clearFilter(columnIndex) {
+    const filter = document.querySelector(`.filter-input[data-column="${columnIndex}"]`);
+    if (filter) {
+        filter.value = '';
+        filter.dispatchEvent(new Event('input'));
+        filter.focus();
+        filter.nextElementSibling.classList.remove('show');
+    }
+}
+
+// Adiciona funcionalidade para limpar todos os filtros
+document.addEventListener('keydown', function(e) {
+    // Ctrl + Alt + F para limpar todos os filtros
+    if (e.ctrlKey && e.altKey && e.key === 'f') {
+        e.preventDefault();
+        document.querySelectorAll('.filter-input').forEach(filter => {
+            filter.value = '';
+            filter.nextElementSibling.classList.remove('show');
+        });
+        document.querySelectorAll('.filter-input')[0].dispatchEvent(new Event('input'));
+    }
+});
+
+// Adiciona funcionalidade para ordenar por data (mais recentes primeiro)
+function sortByDate() {
+    const rows = Array.from(document.querySelectorAll('.data-row'));
+    const tbody = document.getElementById('tableBody');
+    
+    rows.sort((a, b) => {
+        const dateA = a.cells[3].textContent;
+        const dateB = b.cells[3].textContent;
+        
+        if (dateA === '-' && dateB === '-') return 0;
+        if (dateA === '-') return 1;
+        if (dateB === '-') return -1;
+        
+        // Converte datas DD/MM/YYYY para objeto Date
+        const [dayA, monthA, yearA] = dateA.split('/').map(Number);
+        const [dayB, monthB, yearB] = dateB.split('/').map(Number);
+        const dateObjA = new Date(yearA, monthA - 1, dayA);
+        const dateObjB = new Date(yearB, monthB - 1, dayB);
+        
+        return dateObjB - dateObjA; // Ordena do mais recente para o mais antigo
+    });
+    
+    // Reinsere as linhas ordenadas
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
+{% endblock %}
